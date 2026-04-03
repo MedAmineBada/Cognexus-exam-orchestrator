@@ -10,6 +10,14 @@ class AppException(HTTPException):
         self.status_code = status_code
         super().__init__(message)
 
+class BadGatewayException(AppException):
+    def __init__(self, message: str = "Bad Gateway", status_code: int = status.HTTP_502_BAD_GATEWAY):
+        super().__init__(message, status_code)
+
+class GatewayTimeoutException(AppException):
+    def __init__(self, message: str = "Gateway Timeout", status_code: int = status.HTTP_504_GATEWAY_TIMEOUT):
+        super().__init__(message, status_code)
+
 async def app_exception_manager(req, exc):
     return JSONResponse(content={"error": exc.message}, status_code=exc.status_code)
 

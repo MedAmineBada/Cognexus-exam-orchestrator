@@ -1,9 +1,12 @@
-from pydantic.v1 import BaseSettings
+from pydantic_settings import BaseSettings
 
 
 class EnvFile(BaseSettings):
     MONGO_URL: str
     MONGO_DB_NAME: str
+    DOC_PARSER_URL: str
+    EXGATE_UPLOAD_URL: str
+    EXGATE_LLM_URL: str
 
     class Config:
         env_file = ".env"

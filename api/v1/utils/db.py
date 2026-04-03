@@ -8,7 +8,7 @@ client: AsyncIOMotorClient | None = None
 db: AsyncIOMotorDatabase | None = None
 
 
-async def connect_and_init_db():
+async def connect_and_init_mongo_db():
     global client, db
 
     client = AsyncIOMotorClient(
@@ -53,21 +53,14 @@ async def connect_and_init_db():
         else:
             print(f"Collection already exists: {col_name}")
 
-    for col_name, index_list in mongodb_config.INDEXES.items():
-        for field, unique in index_list:
-            await db[col_name].create_index(field, unique=unique)
-            print(f"Index on {col_name}.{field} (unique={unique})")
-
-
-async def close_db_connection():
+async def close_monbgodb_connection():
     """Gracefully close the MongoDB connection."""
     global client
     if client:
         client.close()
         print("MongoDB connection closed")
 
-
-def get_db() -> AsyncIOMotorDatabase:
+def get_mongodb() -> AsyncIOMotorDatabase:
     """FastAPI dependency — returns the db handle or raises 503."""
     if db is None:
         from fastapi import HTTPException, status
@@ -76,3 +69,16 @@ def get_db() -> AsyncIOMotorDatabase:
             detail="Database is not available",
         )
     return db
+
+async def get_next_id(collection_name: str) -> int:
+    """Auto-starts at 0, no initialization needed."""
+    counter = await db.counters.find_one_and_update(
+        {"_id": collection_name},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True
+    )
+    # If this is the first time (upsert created it), seq will be 1
+    # We want to start at 0, so subtract 1 on first-time detection
+    # Actually, upsert + $inc starts at 1 (0 + 1), so we adjust:
+    return counter["seq"] - 1
