@@ -1,4 +1,10 @@
+"""
+V1 API router configuration.
+"""
 from fastapi import APIRouter
 from api.v1.routes.exam_routes import router as exam_router
-router = APIRouter(prefix="/api/v1/exam")
+from api.v1.routes.correction_routes import router as correction_router
+
+router: APIRouter = APIRouter(prefix="/api/v1/exam")
 router.include_router(exam_router)
+router.include_router(correction_router)
