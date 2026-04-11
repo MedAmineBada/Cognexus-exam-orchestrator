@@ -1,18 +1,24 @@
 """
 Exam related business logic services.
 """
-import json
 import uuid
 import base64
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import Form
 from starlette.datastructures import UploadFile
 
 from api.v1.models.exam import ExamCreation, ExamSave, Exam
-from api.v1.utils import get_next_id, get_mongodb, AppException
-from api.v1.utils.external_utils import extract, organize_exam_text, upload_files, sanitize_filename
+from api.v1.utils import (
+    get_next_id, 
+    get_mongodb, 
+    AppException, 
+    extract, 
+    organize_exam_text, 
+    upload_files, 
+    sanitize_filename
+)
 
 
 async def create_exam(
@@ -75,7 +81,7 @@ async def save_exam(exam: ExamSave):
     await db.exam.insert_one(new_exam.model_dump(exclude={"_id": True}))
     return {"uuid":exam_uuid}
 
-async def get_exam(id: str):
+async def get_exam(id: Optional[str]):
     db = get_mongodb()
     if id:
         exam = await db.exam.find_one({"uuid": id})
@@ -85,4 +91,3 @@ async def get_exam(id: str):
     else:
         exams = await db.exam.find().to_list(length=None)
         return exams
-

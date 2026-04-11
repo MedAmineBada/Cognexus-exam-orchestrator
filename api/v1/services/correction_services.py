@@ -1,20 +1,25 @@
 import base64
 import uuid
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Optional
 
 from fastapi import UploadFile, Form, Depends, File
 
-from api.v1.models.correction import CorrectionCreation
-from api.v1.utils import parse_exam_content
-from api.v1.utils.external_utils import organize_correction_text, extract, sanitize_filename, upload_files
+from api.v1.models.correction import Correction
+from api.v1.utils import (
+    parse_exam_content, 
+    organize_correction_text, 
+    extract, 
+    sanitize_filename, 
+    upload_files
+)
 
 
 async def create_correction(
         file: UploadFile = File(...),
         exam_content: Annotated[dict, Depends(parse_exam_content)] = None,
         exam_id: int = Form(...)
-) -> CorrectionCreation:
+) -> Correction:
     file_content = await extract(file)
     clean_text = await organize_correction_text(exam_content, str(file_content))
 
@@ -31,11 +36,17 @@ async def create_correction(
 
     corr_uuid = str(uuid.uuid4())
 
-    corr = CorrectionCreation(
-        id=corr_uuid,
+    corr = Correction(
+        uuid=corr_uuid,
         exam_id=exam_id,
         content=clean_text,
         file_url=upload_url
     )
 
     return corr
+
+async def save_correction(corr: Correction):
+    pass
+
+async def get_correction(id: Optional[str]):
+    pass
