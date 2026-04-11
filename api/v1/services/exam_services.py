@@ -1,6 +1,8 @@
 """
 Exam related business logic services.
 """
+import json
+import uuid
 import base64
 from datetime import datetime
 from typing import Any
@@ -8,19 +10,20 @@ from typing import Any
 from fastapi import Form
 from starlette.datastructures import UploadFile
 
-from api.v1.models.exam import ExamCreation, ExamSave
-from api.v1.utils import get_next_id
+from api.v1.models.exam import ExamCreation, ExamSave, Exam
+from api.v1.utils import get_next_id, get_mongodb, AppException
 from api.v1.utils.external_utils import extract, organize_exam_text, upload_files, sanitize_filename
 
 
 async def create_exam(
-    file: UploadFile,
-    teacher_id: int = Form(...), 
-    exam_name: str = Form(...)
+        file: UploadFile,
+        teacher_id: int = Form(...),
+        exam_name: str = Form(...)
 ) -> ExamCreation:
     """
     Create a new exam from an uploaded file.
     """
+
     exam_id: int = await get_next_id("exams")
 
     exam_content: Any = await extract(file)
@@ -40,15 +43,46 @@ async def create_exam(
     exam: ExamCreation = ExamCreation(
         id=exam_id,
         title=exam_name,
-        publish_datetime=datetime.now().replace(second=0, microsecond=0),
         content=clean_text,
         file_url=upload_url,
         teacher_id=teacher_id
     )
     return exam
 
-async def save_exam(exam: ExamSave) -> ExamSave:
+
+async def save_exam(exam: ExamSave):
     """
     Save an exam.
     """
-    return exam
+    db = get_mongodb()
+
+    if await db.exam.find_one({"id": exam.id}):
+        raise AppException(message="Exam already exists")
+
+    exam_uuid = str(uuid.uuid4())
+
+    while await db.exam.find_one({"uuid": exam_uuid}):
+        exam_uuid = str(uuid.uuid4())
+
+    new_exam = Exam(uuid=exam_uuid,
+                    title=exam.title,
+                    publish_datetime=datetime.now().replace(second=0, microsecond=0),
+                    content=exam.content,
+                    file_url=str(exam.file_url),
+                    teacher_id=exam.teacher_id,
+                    correction_id=exam.correction_id)
+
+    await db.exam.insert_one(new_exam.model_dump(exclude={"_id": True}))
+    return {"uuid":exam_uuid}
+
+async def get_exam(id: str):
+    db = get_mongodb()
+    if id:
+        exam = await db.exam.find_one({"uuid": id})
+        if not exam:
+            raise AppException(message="Exam doesn't exists")
+        return [exam]
+    else:
+        exams = await db.exam.find().to_list(length=None)
+        return exams
+
