@@ -77,3 +77,12 @@ def sanitize_filename(name: str) -> str:
     name = name.strip('_')
 
     return name
+
+async def find_teacher(teacher_id: int) -> bool:
+    """
+    Contact user service and check if teacher exists.
+    For now, return True if teacher_id is 1, else False.
+    """
+    if teacher_id == 1:
+        return True
+    return False

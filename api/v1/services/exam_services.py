@@ -11,13 +11,12 @@ from starlette.datastructures import UploadFile
 
 from api.v1.models.exam import ExamCreation, ExamSave, Exam
 from api.v1.utils import (
-    get_next_id, 
-    get_mongodb, 
-    AppException, 
-    extract, 
-    organize_exam_text, 
-    upload_files, 
-    sanitize_filename
+    get_mongodb,
+    extract,
+    organize_exam_text,
+    upload_files,
+    sanitize_filename,
+    find_teacher, NotFoundException
 )
 
 
@@ -29,8 +28,11 @@ async def create_exam(
     """
     Create a new exam from an uploaded file.
     """
+    
+    if not await find_teacher(teacher_id):
+        raise NotFoundException(message=f"Teacher with id {teacher_id} not found")
 
-    exam_id: int = await get_next_id("exams")
+    exam_uuid = str(uuid.uuid4())
 
     exam_content: Any = await extract(file)
     clean_text: Any = await organize_exam_text(str(exam_content))
@@ -47,7 +49,7 @@ async def create_exam(
     upload_url: str = upload["results"][0]["url"]
 
     exam: ExamCreation = ExamCreation(
-        id=exam_id,
+        id=exam_uuid,
         title=exam_name,
         content=clean_text,
         file_url=upload_url,
@@ -60,17 +62,14 @@ async def save_exam(exam: ExamSave):
     """
     Save an exam.
     """
+    if not await find_teacher(exam.teacher_id):
+        raise NotFoundException(message=f"Teacher with id {exam.teacher_id} not found")
+
     db = get_mongodb()
 
-    if await db.exam.find_one({"id": exam.id}):
-        raise AppException(message="Exam already exists")
 
-    exam_uuid = str(uuid.uuid4())
 
-    while await db.exam.find_one({"uuid": exam_uuid}):
-        exam_uuid = str(uuid.uuid4())
-
-    new_exam = Exam(uuid=exam_uuid,
+    new_exam = Exam(uuid=exam.id,
                     title=exam.title,
                     publish_datetime=datetime.now().replace(second=0, microsecond=0),
                     content=exam.content,
@@ -78,15 +77,15 @@ async def save_exam(exam: ExamSave):
                     teacher_id=exam.teacher_id,
                     correction_id=exam.correction_id)
 
-    await db.exam.insert_one(new_exam.model_dump(exclude={"_id": True}))
-    return {"uuid":exam_uuid}
+    await db.exam.insert_one(new_exam.model_dump())
+    return {"uuid":new_exam.uuid}
 
 async def get_exam(id: Optional[str]):
     db = get_mongodb()
     if id:
         exam = await db.exam.find_one({"uuid": id})
         if not exam:
-            raise AppException(message="Exam doesn't exists")
+            raise NotFoundException(message="Exam doesn't exist.")
         return [exam]
     else:
         exams = await db.exam.find().to_list(length=None)

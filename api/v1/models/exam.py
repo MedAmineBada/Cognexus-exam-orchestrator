@@ -9,26 +9,22 @@ class ExamCreation(BaseModel):
     """
     Model for creating an exam.
     """
-    id: int
+    id: str
     title: str
     content: dict[str, JsonValue]
     file_url: AnyHttpUrl
     teacher_id: int
-
-class ExamCorrectionCreate(BaseModel):
-    id:int
-    content: dict[str, JsonValue]
 
 class ExamSave(BaseModel):
     """
     Model for saving an exam.
     """
-    id: int
+    id: str
     title: str
     content: dict[str, JsonValue]
     file_url: AnyHttpUrl
     teacher_id: int
-    correction_id: int
+    correction_id: str
 
 class ExamGet(BaseModel):
     uuid: str
@@ -37,7 +33,7 @@ class ExamGet(BaseModel):
     content: dict[str, JsonValue]
     file_url: str
     teacher_id: int
-    correction_id: int
+    correction_id: str
 
 class Exam(BaseModel):
     """
@@ -49,4 +45,4 @@ class Exam(BaseModel):
     content: dict[str, JsonValue]
     file_url: str
     teacher_id: int
-    correction_id: int
+    correction_id: str

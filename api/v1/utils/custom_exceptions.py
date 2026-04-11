@@ -13,3 +13,11 @@ class BadGatewayException(AppException):
 class GatewayTimeoutException(AppException):
     def __init__(self, message: str = "Gateway Timeout", status_code: int = status.HTTP_504_GATEWAY_TIMEOUT):
         super().__init__(message, status_code)
+
+class NotFoundException(AppException):
+    def __init__(self, message: str = "Not Found", status_code: int = status.HTTP_404_NOT_FOUND):
+        super().__init__(message, status_code)
+
+class AlreadyExistsException(AppException):
+    def __init__(self, message: str = "Already Exists", status_code: int = status.HTTP_409_CONFLICT):
+        super().__init__(message, status_code)

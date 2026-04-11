@@ -9,6 +9,8 @@ class Correction(BaseModel):
     Model for creating a correction.
     """
     uuid: str
-    exam_id: int
-    content: dict[str, JsonValue]
+    exam_id: str
+    teacher_id: int
     file_url: AnyHttpUrl
+    content: dict[str, JsonValue]
+
