@@ -19,7 +19,6 @@ from api.v1.utils import (
     find_teacher, NotFoundException
 )
 
-
 async def create_exam(
         file: UploadFile,
         teacher_id: int = Form(...),
@@ -38,6 +37,7 @@ async def create_exam(
     clean_text: Any = await organize_exam_text(str(exam_content))
 
     await file.seek(0)
+
     contents: bytes = await file.read()
     base64_encoded: str = base64.b64encode(contents).decode("utf-8")
 

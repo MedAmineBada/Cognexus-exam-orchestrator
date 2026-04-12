@@ -1,4 +1,7 @@
 import json
+import re
+from typing import Any
+
 import httpx
 from fastapi import Form, HTTPException
 from httpx import ConnectError, TimeoutException
@@ -46,13 +49,25 @@ async def organize_exam_text(text: str):
     content = response.json()
     result_text = content["response"]
 
-    # Step 1: remove markdown if it exists
     if "```" in result_text:
         result_text = result_text.split("```")[1]
         result_text = result_text.replace("json", "").strip()
-
-    # Step 2: ALWAYS try parsing the result as JSON
     try:
-        return json.loads(result_text)
+        parsed = json.loads(result_text)
     except json.JSONDecodeError:
         raise ValueError("LLM did not return valid JSON")
+
+    return fix_latex_in_dict(parsed)
+
+def fix_latex_in_dict(data: Any) -> Any:
+    if isinstance(data, dict):
+        return {k: fix_latex_in_dict(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [fix_latex_in_dict(item) for item in data]
+    elif isinstance(data, str):
+        # Fix: "\ frac" → "\frac"
+        data = re.sub(r'\\ ([a-zA-Z])', r'\\\1', data)
+        # Fix: "\\frac" → "\frac"
+        data = re.sub(r'\\\\([a-zA-Z])', r'\\\1', data)
+        return data
+    return data
