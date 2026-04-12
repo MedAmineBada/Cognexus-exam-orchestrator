@@ -3,26 +3,31 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Any, Optional
 
-from fastapi import UploadFile, Form, Depends, File
+from fastapi import UploadFile, Form, Depends, File, Header
 
-from api.v1.models.correction import Correction
+from api.v1.models.correction import Correction, CorrectionSave
+from api.v1.models.enums import UserRole
 from api.v1.utils import (
     parse_exam_content,
     organize_correction_text,
     extract,
     sanitize_filename,
     upload_files,
-    find_teacher, NotFoundException, get_mongodb, AlreadyExistsException
+    find_teacher, NotFoundException, get_mongodb, ConflictException
 )
 
 
 async def create_correction(
-        file: UploadFile = File(...),
+        file: UploadFile,
         exam_content: Annotated[dict, Depends(parse_exam_content)] = None,
         exam_id: str = Form(...),
-        teacher: int = Form(...)
-) -> Correction:
-    if not await find_teacher(teacher):
+        user_id: int = Header(...),
+        user_role: UserRole = Header(...),
+) -> CorrectionSave:
+    if user_role != UserRole.TEACHER:
+        raise NotFoundException(message="Only teachers can create corrections")
+
+    if not await find_teacher(user_id):
         raise NotFoundException(message=f"Teacher doesn't exist.")
 
     db = get_mongodb()
@@ -43,18 +48,20 @@ async def create_correction(
 
     corr_uuid = str(uuid.uuid4())
 
-    corr = Correction(
+    corr = CorrectionSave(
         uuid=corr_uuid,
         exam_id=exam_id,
-        teacher_id=teacher,
         content=clean_text,
         file_url=upload_url
     )
 
     return corr
 
-async def save_correction(corr: Correction):
-    if not await find_teacher(corr.teacher_id):
+async def save_correction(corr: CorrectionSave, user_id: int, user_role: UserRole):
+    if user_role != UserRole.TEACHER:
+        raise NotFoundException(message="Only teachers can save corrections")
+
+    if not await find_teacher(user_id):
         raise NotFoundException(message=f"Teacher doesn't exist.")
 
     db = get_mongodb()
@@ -63,13 +70,26 @@ async def save_correction(corr: Correction):
         raise NotFoundException("Exam doesn't exist.")
 
     if await db.correction.find_one({"uuid": corr.uuid}) or await db.correction.find_one({"exam_id": corr.exam_id}):
-        raise AlreadyExistsException("Correction already exists.")
+        raise ConflictException("Correction already exists.")
 
-    await db.correction.insert_one(corr.model_dump(mode="json"))
-    return {"uuid":corr.uuid}
+    new_correction = Correction(uuid=corr.uuid,
+                                exam_id=corr.exam_id,
+                                file_url=str(corr.file_url),
+                                content=corr.content,
+                                teacher_id=user_id)
 
-async def get_correction(exam_id: Optional[str]):
+    await db.correction.insert_one(new_correction.model_dump(mode="json"))
+    return {"uuid":new_correction.uuid}
+
+async def get_correction(exam_id: Optional[str], user_id: int, user_role: UserRole):
+    if user_role != UserRole.TEACHER:
+        raise NotFoundException(message="Only teachers can get corrections")
+
     db = get_mongodb()
+
+    if not await find_teacher(user_id):
+        raise NotFoundException(message=f"Teacher doesn't exist.")
+
     if exam_id:
         exam = await db.exam.find_one({"uuid": exam_id})
         if not exam:

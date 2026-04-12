@@ -18,6 +18,10 @@ class NotFoundException(AppException):
     def __init__(self, message: str = "Not Found", status_code: int = status.HTTP_404_NOT_FOUND):
         super().__init__(message, status_code)
 
-class AlreadyExistsException(AppException):
-    def __init__(self, message: str = "Already Exists", status_code: int = status.HTTP_409_CONFLICT):
+class ConflictException(AppException):
+    def __init__(self, message: str = "Conflict", status_code: int = status.HTTP_409_CONFLICT):
+        super().__init__(message, status_code)
+
+class ForbiddenException(AppException):
+    def __init__(self, message: str = "Forbidden", status_code: int = status.HTTP_403_FORBIDDEN):
         super().__init__(message, status_code)

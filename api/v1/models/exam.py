@@ -13,7 +13,6 @@ class ExamCreation(BaseModel):
     title: str
     content: dict[str, JsonValue]
     file_url: AnyHttpUrl
-    teacher_id: int
 
 class ExamSave(BaseModel):
     """
@@ -23,7 +22,6 @@ class ExamSave(BaseModel):
     title: str
     content: dict[str, JsonValue]
     file_url: AnyHttpUrl
-    teacher_id: int
     correction_id: str
 
 class ExamGet(BaseModel):
@@ -32,7 +30,6 @@ class ExamGet(BaseModel):
     publish_datetime: datetime
     content: dict[str, JsonValue]
     file_url: str
-    teacher_id: int
     correction_id: str
 
 class Exam(BaseModel):

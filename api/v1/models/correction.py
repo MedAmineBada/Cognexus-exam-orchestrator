@@ -10,7 +10,15 @@ class Correction(BaseModel):
     """
     uuid: str
     exam_id: str
-    teacher_id: int
     file_url: AnyHttpUrl
     content: dict[str, JsonValue]
+    teacher_id: int
 
+class CorrectionSave(BaseModel):
+    """
+    Model for creating a correction.
+    """
+    uuid: str
+    exam_id: str
+    file_url: AnyHttpUrl
+    content: dict[str, JsonValue]

@@ -5,10 +5,9 @@ import uuid
 import base64
 from datetime import datetime
 from typing import Any, Optional
-
-from fastapi import Form
 from starlette.datastructures import UploadFile
 
+from api.v1.models.enums import UserRole
 from api.v1.models.exam import ExamCreation, ExamSave, Exam
 from api.v1.utils import (
     get_mongodb,
@@ -16,20 +15,23 @@ from api.v1.utils import (
     organize_exam_text,
     upload_files,
     sanitize_filename,
-    find_teacher, NotFoundException
+    find_teacher, NotFoundException, ForbiddenException
 )
 
 async def create_exam(
         file: UploadFile,
-        teacher_id: int = Form(...),
-        exam_name: str = Form(...)
+        user_id: int,
+        user_role: UserRole,
+        exam_name: str,
 ) -> ExamCreation:
     """
     Create a new exam from an uploaded file.
     """
-    
-    if not await find_teacher(teacher_id):
-        raise NotFoundException(message=f"Teacher with id {teacher_id} not found")
+    if user_role != UserRole.TEACHER:
+        raise ForbiddenException(message="Only teachers can create exams")
+
+    if not await find_teacher(user_id):
+        raise NotFoundException(message=f"Teacher not found")
 
     exam_uuid = str(uuid.uuid4())
 
@@ -53,17 +55,20 @@ async def create_exam(
         title=exam_name,
         content=clean_text,
         file_url=upload_url,
-        teacher_id=teacher_id
+        teacher_id=user_id
     )
     return exam
 
 
-async def save_exam(exam: ExamSave):
+async def save_exam(exam: ExamSave, user_id: int, user_role: UserRole,):
     """
     Save an exam.
     """
-    if not await find_teacher(exam.teacher_id):
-        raise NotFoundException(message=f"Teacher with id {exam.teacher_id} not found")
+    if user_role != UserRole.TEACHER:
+        raise ForbiddenException(message="Only teachers can save exams")
+
+    if not await find_teacher(user_id):
+        raise NotFoundException(message=f"Teacher not found")
 
     db = get_mongodb()
 
@@ -74,7 +79,7 @@ async def save_exam(exam: ExamSave):
                     publish_datetime=datetime.now().replace(second=0, microsecond=0),
                     content=exam.content,
                     file_url=str(exam.file_url),
-                    teacher_id=exam.teacher_id,
+                    teacher_id=user_id,
                     correction_id=exam.correction_id)
 
     await db.exam.insert_one(new_exam.model_dump())
