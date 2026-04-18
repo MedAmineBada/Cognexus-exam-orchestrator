@@ -7,9 +7,11 @@ class EnvFile(BaseSettings):
     DOC_PARSER_URL: str
     EXGATE_UPLOAD_URL: str
     EXGATE_LLM_URL: str
+    OCR_URL: str
 
     class Config:
         env_file = ".env"
+
 
 """An instance of the EnvFile class, providing access to the environment variables."""
 env = EnvFile()

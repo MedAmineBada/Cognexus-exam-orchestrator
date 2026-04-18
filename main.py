@@ -4,7 +4,13 @@ import uvicorn
 from fastapi import FastAPI
 
 from api.v1 import v1_router
-from api.v1.utils import AppException, app_exception_manager, default_exception_manager, connect_and_init_mongo_db, close_monbgodb_connection
+from api.v1.utils import (
+    AppException,
+    app_exception_manager,
+    default_exception_manager,
+    connect_and_init_mongo_db,
+    close_monbgodb_connection,
+)
 
 
 @asynccontextmanager
@@ -14,6 +20,7 @@ async def lifespan(app: FastAPI):
     yield
     # SHUTDOWN — close connection
     await close_monbgodb_connection()
+
 
 app = FastAPI(debug=False, lifespan=lifespan)
 

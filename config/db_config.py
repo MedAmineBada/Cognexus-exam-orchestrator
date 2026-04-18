@@ -14,8 +14,10 @@ class MongoDBConfig(BaseSettings):
     COLLECTIONS: dict[str, dict | None] = {
         "exam": {},
         "correction": {},
-        "answer_sheet": {}
+        "answer_sheet": {},
+        "grade": {},
     }
+
 
 mongodb_config = MongoDBConfig()
 
@@ -25,4 +27,3 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8010,
     )
-

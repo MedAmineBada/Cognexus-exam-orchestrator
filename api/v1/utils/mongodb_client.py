@@ -1,4 +1,5 @@
 import asyncio
+
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 
@@ -53,6 +54,7 @@ async def connect_and_init_mongo_db():
         else:
             print(f"Collection already exists: {col_name}")
 
+
 async def close_monbgodb_connection():
     """Gracefully close the MongoDB connection."""
     global client
@@ -60,15 +62,18 @@ async def close_monbgodb_connection():
         client.close()
         print("MongoDB connection closed")
 
+
 def get_mongodb() -> AsyncIOMotorDatabase:
     """FastAPI dependency — returns the db handle or raises 503."""
     if db is None:
         from fastapi import HTTPException, status
+
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database is not available",
         )
     return db
+
 
 async def get_next_id(collection_name: str) -> int:
     """Auto-starts at 0, no initialization needed."""
@@ -76,7 +81,7 @@ async def get_next_id(collection_name: str) -> int:
         {"_id": collection_name},
         {"$inc": {"seq": 1}},
         upsert=True,
-        return_document=True
+        return_document=True,
     )
     # If this is the first time (upsert created it), seq will be 1
     # We want to start at 0, so subtract 1 on first-time detection
