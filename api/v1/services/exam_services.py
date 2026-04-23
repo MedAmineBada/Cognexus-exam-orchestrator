@@ -107,3 +107,4 @@ async def get_exam(id: Optional[str]):
     else:
         exams = await db.exam.find().to_list(length=None)
         return exams
+

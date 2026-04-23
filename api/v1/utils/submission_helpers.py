@@ -147,3 +147,5 @@ def calculate_grades(grading_result: dict) -> tuple[float, float]:
             total_max += question.get("max", 0.0)
 
     return total_awarded, total_max
+
+

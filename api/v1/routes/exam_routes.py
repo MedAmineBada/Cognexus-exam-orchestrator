@@ -9,6 +9,7 @@ from fastapi import APIRouter, UploadFile, Form, Header
 from api.v1.models.enums import UserRole
 from api.v1.models.exam import ExamSave, ExamGet
 from api.v1.services.exam_services import create_exam, save_exam, get_exam
+from api.v1.services.submission_services import get_cheat_report
 
 router: APIRouter = APIRouter()
 
@@ -39,3 +40,8 @@ async def save(
 @router.get("/get", response_model=List[ExamGet])
 async def get(id: Optional[str] = None):
     return await get_exam(id)
+
+
+@router.get("/{exam_id}/cheat_report")
+async def get_report(exam_id: str):
+    return await get_cheat_report(exam_id)

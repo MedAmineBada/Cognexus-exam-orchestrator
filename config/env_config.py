@@ -8,6 +8,7 @@ class EnvFile(BaseSettings):
     EXGATE_UPLOAD_URL: str
     EXGATE_LLM_URL: str
     OCR_URL: str
+    ANTICHEAT_URL: str
 
     class Config:
         env_file = ".env"

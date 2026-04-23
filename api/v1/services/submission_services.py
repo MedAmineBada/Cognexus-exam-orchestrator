@@ -15,6 +15,11 @@ from api.v1.utils import (
     AppException,
     upload_files,
 )
+from api.v1.utils.anticheat_helpers import (
+    assemble_anti_cheat_request,
+    submit_answers_to_anticheat,
+    fetch_exam_cheat_report,
+)
 from api.v1.utils.submission_helpers import (
     organize_submission,
     assemble_submission_request,
@@ -89,6 +94,9 @@ async def submit_exam(
 
     awarded_g, max_g = calculate_grades(graded)
 
+    anti_cheat_req = assemble_anti_cheat_request(exam["content"], organized_submission)
+    await submit_answers_to_anticheat(anti_cheat_req, user_id, exam_id)
+
     new_grading: Grading = Grading(
         uuid=answer_sheet_uuid,
         student=user_id,
@@ -105,3 +113,7 @@ async def submit_exam(
         raise AppException("Could not save the grades to db.")
 
     return graded
+
+
+async def get_cheat_report(exam_id: str):
+    return await fetch_exam_cheat_report(exam_id)
