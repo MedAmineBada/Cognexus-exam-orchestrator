@@ -10,6 +10,7 @@ from api.v1.utils.custom_exceptions import (
     BadGatewayException,
     AppException,
 )
+from api.v1.utils.prompts import SYSTEM_PROMPT_MIXED, USER_PROMPT_MIXED
 from config import env
 
 
@@ -116,7 +117,12 @@ async def send_images_to_ocr(images: list[UploadFile]):
                 ("files", (img.filename, img.file, img.content_type)) for img in images
             ]
 
-            response = await client.post(env.OCR_URL, files=files)
+            data = {
+                "system_prompt": SYSTEM_PROMPT_MIXED,
+                "user_prompt": USER_PROMPT_MIXED,
+            }
+
+            response = await client.post(env.OCR_URL, files=files, data=data)
 
     except httpx.ConnectError:
         raise BadGatewayException(message="Failed to connect to OCR service.")
