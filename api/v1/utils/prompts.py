@@ -1,3 +1,5 @@
+from typing import List, Dict
+
 organize_exam_text_prompt = r"""
     You will receive raw text extracted from an exam PDF. The text may contain noise such as headers, page numbers, formatting artifacts, and repeated titles.
 
@@ -124,21 +126,20 @@ organize_exam_text_prompt = r"""
 
 
 def generate_organize_correction_prompt(
-    exam_content: dict, correction_text: str
+    exam_content: Dict, correction_text: str
 ) -> str:
     """
-    Generates a prompt to organize correction text to match exam structure.
+    Constructs an LLM prompt for structuring raw correction text.
 
     Args:
-        exam_content (dict): Structured exam JSON as dictionary
-        correction_text (str): Raw correction text extracted from PDF
+        exam_content: Structured dictionary representing the exam schema.
+        correction_text: Raw text string extracted from a correction source.
 
     Returns:
-        str: Formatted prompt ready to be sent to LLM
+        A formatted prompt string ready for LLM consumption.
     """
     import json
 
-    # Convert exam_content dict to formatted JSON string
     exam_json_str = json.dumps(exam_content, indent=2, ensure_ascii=False)
 
     prompt = f"""You will receive two inputs:
@@ -192,36 +193,35 @@ def generate_organize_correction_prompt(
     return prompt
 
 
-def generate_organize_submission_prompt(exam_content: dict, ocr_result: list) -> str:
+def generate_organize_submission_prompt(
+    exam_content: Dict, ocr_result: List[Dict]
+) -> str:
     """
-    Generates a prompt to organize OCR result to match exam structure.
+    Creates a prompt to map OCR student answers to an exam structure.
 
     Args:
-        exam_content (dict): Structured exam JSON as dictionary
-        ocr_result (list): List of OCR results from scanned submission images
+        exam_content: Structured dictionary representing the exam schema.
+        ocr_result: List of dictionaries containing raw OCR text and metadata.
 
     Returns:
-        str: Formatted prompt ready to be sent to LLM
+        A formatted prompt string containing exam context and student input.
     """
     import json
     import re
 
     exam_json_str = json.dumps(exam_content, indent=2, ensure_ascii=False)
 
-    # Concatenate all OCR text from all pages/images
-    # Replace $math[i]$ placeholders with actual LaTeX from the math array
     full_ocr_text_parts = []
 
     for item in ocr_result:
         text = item["text"]
         math_array = item.get("math", [])
 
-        # Replace all $math[i]$ with actual math content
         def replace_math(match):
             index = int(match.group(1))
             if 0 <= index < len(math_array):
                 return math_array[index]
-            return match.group(0)  # Keep original if index out of range
+            return match.group(0)
 
         text = re.sub(r"\$math\[(\d+)\]\$", replace_math, text)
 
@@ -244,11 +244,10 @@ def generate_organize_submission_prompt(exam_content: dict, ocr_result: list) ->
     MATCHING RULES
     1. Use context clues and the exam questions to figure out which answer belongs to which exercise/question
     2. If the student clearly labels their answer (e.g., "Exercise 2, Q1" or "Ex2 a)"), use that
-    3. If labeling is absent or ambiguous, use the order of answers and the exam structure to infer the mapping
-    4. If no answer can be found for a question, set its value to null
-    5. Do NOT invent or complete answers — only extract what the student wrote
-    6. Keep the student's answer as-is (do not correct spelling or content)
-    7. For math answers, preserve all mathematical expressions and working steps shown by the student
+    3. If labeling is ambiguous, use order of answers to infer the mapping
+    4. If no answer is found for a question, set its value to null
+    5. Do NOT invent or complete answers
+    6. Keep student answer as-is
     
     OUTPUT FORMAT
     
@@ -256,11 +255,7 @@ def generate_organize_submission_prompt(exam_content: dict, ocr_result: list) ->
     
     {{
       "1": {{
-        "1": "student's answer to exercise 1 question 1",
-        "2": "student's answer to exercise 1 question 2"
-      }},
-      "2": {{
-        "1": "student's answer to exercise 2 question 1"
+        "1": "student's answer to exercise 1 question 1"
       }}
     }}
     
@@ -278,7 +273,16 @@ def generate_organize_submission_prompt(exam_content: dict, ocr_result: list) ->
     return prompt
 
 
-def generate_grading_prompt(grading_model: dict) -> str:
+def generate_grading_prompt(grading_model: Dict) -> str:
+    """
+    Generates a comprehensive grading prompt for an AI evaluator.
+
+    Args:
+        grading_model: Dictionary containing exam content, corrections, and student answers.
+
+    Returns:
+        A detailed system-like prompt with grading rules and criteria.
+    """
     import json
 
     grading_model_str = json.dumps(grading_model, indent=2, ensure_ascii=False)
@@ -612,6 +616,7 @@ GRADING MODEL:
 Now grade the student's submission:"""
 
     return prompt
+
 
 SYSTEM_PROMPT_MIXED = """\
 You are a handwriting OCR assistant. Transcribe all text from images.

@@ -1,4 +1,12 @@
+"""
+Main entry point for the Exam Orchestrator API service.
+
+Initializes the FastAPI application, configures exception handlers,
+registers API routers, and manages the application lifecycle.
+"""
+
 from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
 import uvicorn
 from fastapi import FastAPI
@@ -14,15 +22,25 @@ from api.v1.utils import (
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    # STARTUP — connect & init DB (fails fast if unreachable)
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """
+    Manages application startup and shutdown events.
+
+    Establishes a connection to the MongoDB database during startup and
+    ensures the connection is gracefully closed when the application stops.
+
+    Args:
+        app: The FastAPI application instance.
+
+    Yields:
+        None: Control back to the FastAPI framework.
+    """
     await connect_and_init_mongo_db()
     yield
-    # SHUTDOWN — close connection
     await close_monbgodb_connection()
 
 
-app = FastAPI(debug=False, lifespan=lifespan)
+app: FastAPI = FastAPI(debug=False, lifespan=lifespan)
 
 app.add_exception_handler(AppException, app_exception_manager)
 app.add_exception_handler(Exception, default_exception_manager)

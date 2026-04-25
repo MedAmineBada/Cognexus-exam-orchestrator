@@ -1,6 +1,12 @@
+"""Exam submission and grading services.
+
+This module handles the student submission process, including OCR processing,
+cloud storage of answer sheets, automated grading, and anti-cheat reporting.
+"""
+
 import base64
 import uuid
-from typing import List, Any
+from typing import List, Any, Dict, Optional
 
 from fastapi import UploadFile
 
@@ -30,33 +36,55 @@ from api.v1.utils.submission_helpers import (
 
 async def submit_exam(
     exam_id: str, images: List[UploadFile], user_id: int, user_role: UserRole
-):
+) -> List[Dict[str, Any]]:
+    """Processes an exam submission from a student.
+
+    Performs OCR on submitted images, saves the answer sheet, triggers
+    automated grading against the correction, and submits data for
+    anti-cheat analysis.
+
+    Args:
+        exam_id: UUID of the exam being submitted.
+        images: List of uploaded images representing the student's answers.
+        user_id: ID of the student submitting the exam.
+        user_role: Role of the user making the request.
+
+    Returns:
+        A list of graded items with feedback and scores.
+
+    Raises:
+        ForbiddenException: If the user is not a student.
+        NotFoundException: If student, exam, or correction is not found.
+        AppException: If database insertion fails.
+    """
     db = get_mongodb()
     if user_role != UserRole.STUDENT:
         raise ForbiddenException(message="Only students can submit exams.")
     if not await find_user(user_id):
         raise NotFoundException(message="Student doesn't exist.")
 
-    exam = await db.exam.find_one(
+    exam: Optional[Dict[str, Any]] = await db.exam.find_one(
         {"uuid": exam_id}, {"_id": 0, "uuid": 1, "correction_id": 1, "content": 1}
     )
     if not exam:
         raise NotFoundException(message="Exam doesn't exist.")
 
-    correction = await db.correction.find_one(
+    correction: Optional[Dict[str, Any]] = await db.correction.find_one(
         {"uuid": exam["correction_id"]}, {"_id": 0, "content": 1}
     )
     if not correction:
         raise NotFoundException(message="Correction doesn't exist.")
 
-    ocr_result = await send_images_to_ocr(images)
+    ocr_result: Any = await send_images_to_ocr(images)
 
-    organized_submission = await organize_submission(exam["content"], ocr_result)
+    organized_submission: Any = await organize_submission(
+        exam["content"], ocr_result
+    )
 
-    answer_sheet_uuid = str(uuid.uuid4())
+    answer_sheet_uuid: str = str(uuid.uuid4())
 
-    filenames = []
-    img_bytes = []
+    filenames: List[str] = []
+    img_bytes: List[str] = []
 
     for i, img in enumerate(images):
         filenames.append(f"image_{i}")
@@ -66,13 +94,13 @@ async def submit_exam(
         base64_encoded: str = base64.b64encode(contents).decode("utf-8")
         img_bytes.append(base64_encoded)
 
-    upload: dict[str, Any] = await upload_files(
+    upload: Dict[str, Any] = await upload_files(
         files=img_bytes,
         filenames=filenames,
         folder=f"submission_images/E{exam_id}-U{user_id}",
     )
 
-    urls = [item["url"] for item in upload["results"]]
+    urls: List[str] = [item["url"] for item in upload["results"]]
     answer_sheet = AnswerSheet(
         uuid=answer_sheet_uuid,
         student_id=user_id,
@@ -83,21 +111,23 @@ async def submit_exam(
 
     try:
         await db.answer_sheet.insert_one(answer_sheet.model_dump())
-    except:
+    except Exception:
         raise AppException("Could not save the answer sheet to db.")
 
-    assembled = assemble_submission_request(
+    assembled: Any = assemble_submission_request(
         exam["content"], correction["content"], organized_submission
     )
 
-    graded = await grade_submission(assembled)
+    graded: List[Dict[str, Any]] = await grade_submission(assembled)
 
     awarded_g, max_g = calculate_grades(graded)
 
-    anti_cheat_req = assemble_anti_cheat_request(exam["content"], organized_submission)
+    anti_cheat_req: Any = assemble_anti_cheat_request(
+        exam["content"], organized_submission
+    )
     await submit_answers_to_anticheat(anti_cheat_req, user_id, exam_id)
 
-    new_grading: Grading = Grading(
+    new_grading = Grading(
         uuid=answer_sheet_uuid,
         student=user_id,
         exam=exam_id,
@@ -109,11 +139,19 @@ async def submit_exam(
     )
     try:
         await db.grade.insert_one(new_grading.model_dump())
-    except:
+    except Exception:
         raise AppException("Could not save the grades to db.")
 
     return graded
 
 
-async def get_cheat_report(exam_id: str):
+async def get_cheat_report(exam_id: str) -> Any:
+    """Retrieves the anti-cheat report for a specific exam.
+
+    Args:
+        exam_id: UUID of the exam to fetch the report for.
+
+    Returns:
+        The cheat report data from the anti-cheat service.
+    """
     return await fetch_exam_cheat_report(exam_id)

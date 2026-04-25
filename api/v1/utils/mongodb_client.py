@@ -1,15 +1,26 @@
 import asyncio
+from typing import Optional
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 
 from config import mongodb_config
 
-client: AsyncIOMotorClient | None = None
-db: AsyncIOMotorDatabase | None = None
+client: Optional[AsyncIOMotorClient] = None
+db: Optional[AsyncIOMotorDatabase] = None
 
 
-async def connect_and_init_mongo_db():
+async def connect_and_init_mongo_db() -> None:
+    """
+    Establishes a connection to MongoDB and initializes required collections.
+
+    Performs a health check via ping and retries connection until the timeout
+    limit is reached. Once connected, creates collections defined in the
+    configuration if they do not already exist.
+
+    Raises:
+        RuntimeError: If connection cannot be established within the retry limit.
+    """
     global client, db
 
     client = AsyncIOMotorClient(
@@ -18,21 +29,15 @@ async def connect_and_init_mongo_db():
     )
 
     max_retry_seconds = 30
-
     retry_interval = 2
     elapsed = 0
 
     while elapsed < max_retry_seconds:
         try:
             await client.admin.command("ping")
-            print(f"Connected to MongoDB at {mongodb_config.MONGO_URL}")
             break
         except (ConnectionFailure, ServerSelectionTimeoutError):
             elapsed += retry_interval
-            print(
-                f"MongoDB not ready, retrying in {retry_interval}s... "
-                f"({elapsed}/{max_retry_seconds}s)"
-            )
             await asyncio.sleep(retry_interval)
     else:
         raise RuntimeError(
@@ -41,7 +46,6 @@ async def connect_and_init_mongo_db():
         )
 
     db = client[mongodb_config.MONGO_DB_NAME]
-
     existing = await db.list_collection_names()
 
     for col_name, options in mongodb_config.COLLECTIONS.items():
@@ -50,21 +54,27 @@ async def connect_and_init_mongo_db():
                 await db.create_collection(col_name, **options)
             else:
                 await db.create_collection(col_name)
-            print(f"Created collection: {col_name}")
-        else:
-            print(f"Collection already exists: {col_name}")
 
 
-async def close_monbgodb_connection():
-    """Gracefully close the MongoDB connection."""
+async def close_monbgodb_connection() -> None:
+    """
+    Gracefully terminates the active MongoDB client connection.
+    """
     global client
     if client:
         client.close()
-        print("MongoDB connection closed")
 
 
 def get_mongodb() -> AsyncIOMotorDatabase:
-    """FastAPI dependency — returns the db handle or raises 503."""
+    """
+    Provides access to the initialized MongoDB database instance.
+
+    Returns:
+        The active AsyncIOMotorDatabase handle.
+
+    Raises:
+        HTTPException: If the database has not been initialized.
+    """
     if db is None:
         from fastapi import HTTPException, status
 
@@ -76,14 +86,25 @@ def get_mongodb() -> AsyncIOMotorDatabase:
 
 
 async def get_next_id(collection_name: str) -> int:
-    """Auto-starts at 0, no initialization needed."""
+    """
+    Generates a unique, incrementing integer ID for a specific collection.
+
+    This function uses an atomic 'counters' collection to manage and persist
+    the last used ID, starting from zero.
+
+    Args:
+        collection_name: The name of the collection for which to generate an ID.
+
+    Returns:
+        A unique integer identifier.
+    """
+    if db is None:
+        raise RuntimeError("Database not initialized")
+
     counter = await db.counters.find_one_and_update(
         {"_id": collection_name},
         {"$inc": {"seq": 1}},
         upsert=True,
         return_document=True,
     )
-    # If this is the first time (upsert created it), seq will be 1
-    # We want to start at 0, so subtract 1 on first-time detection
-    # Actually, upsert + $inc starts at 1 (0 + 1), so we adjust:
     return counter["seq"] - 1

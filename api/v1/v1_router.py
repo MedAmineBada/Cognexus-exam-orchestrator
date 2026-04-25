@@ -1,5 +1,7 @@
-"""
-V1 API router configuration.
+"""V1 API router configuration.
+
+This module aggregates and configures all sub-routers for the V1 API version,
+including routes for exams, corrections, and submissions.
 """
 
 from fastapi import APIRouter

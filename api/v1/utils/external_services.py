@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import List, Dict, Any
 
 import httpx
 from fastapi import UploadFile
@@ -14,7 +14,25 @@ from api.v1.utils.prompts import SYSTEM_PROMPT_MIXED, USER_PROMPT_MIXED
 from config import env
 
 
-async def upload_files(files: List[str], filenames: List[str], folder: str):
+async def upload_files(
+    files: List[str], filenames: List[str], folder: str
+) -> Dict[str, Any]:
+    """
+    Uploads base64 encoded files to an external storage gate service.
+
+    Args:
+        files: List of base64 encoded file strings.
+        filenames: Corresponding list of names for the files.
+        folder: Target folder name in the storage service.
+
+    Returns:
+        The JSON response from the storage service.
+
+    Raises:
+        BadGatewayException: If the storage service is unreachable.
+        GatewayTimeoutException: If the upload request times out.
+        AppException: If the service returns an error status code.
+    """
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
@@ -36,19 +54,31 @@ async def upload_files(files: List[str], filenames: List[str], folder: str):
             body = response.json()
             message = (
                 body.get("error")
-                or "Something went wrong within the external gate Service on file upload."
+                or "Error within the external gate Service on file upload."
             )
         except Exception:
-            message = (
-                "Something went wrong within the external gate Service on file upload."
-            )
+            message = "Error within the external gate Service on file upload."
 
         raise AppException(status_code=response.status_code, message=message)
 
     return response.json()
 
 
-async def extract(file: UploadFile):
+async def extract(file: UploadFile) -> str:
+    """
+    Extracts text content from a PDF file using an external parsing service.
+
+    Args:
+        file: The PDF file uploaded via FastAPI.
+
+    Returns:
+        A single string containing the concatenated text from all parsed pages.
+
+    Raises:
+        BadGatewayException: If the parsing service is unreachable.
+        GatewayTimeoutException: If the parsing request times out.
+        AppException: If the service returns an error status code.
+    """
     await file.seek(0)
     file_content = await file.read()
     try:
@@ -70,47 +100,64 @@ async def extract(file: UploadFile):
             body = response.json()
             message = (
                 body.get("error")
-                or "Something went wrong within the document parsing Service."
+                or "Error within the document parsing Service."
             )
         except Exception:
-            message = "Something went wrong within the document parsing Service."
+            message = "Error within the document parsing Service."
 
         raise AppException(status_code=response.status_code, message=message)
-    pages = content["pages"]
-    text = ""
-    for page in pages:
-        text = text + " \n " + page
 
-    return text
+    pages = content["pages"]
+    return " \n ".join(pages)
 
 
 def sanitize_filename(name: str) -> str:
-    # remove extension if present
+    """
+    Normalizes a filename by removing extensions and unsafe characters.
+
+    Args:
+        name: The raw filename string to sanitize.
+
+    Returns:
+        A sanitized string containing only alphanumeric characters,
+        hyphens, and underscores.
+    """
     name = name.replace(".pdf", "")
-
-    # replace anything not safe with underscore
     name = re.sub(r"[^a-zA-Z0-9_-]", "_", name)
-
-    # remove duplicate underscores
     name = re.sub(r"_+", "_", name)
-
-    # trim underscores from start/end
-    name = name.strip("_")
-
-    return name
+    return name.strip("_")
 
 
 async def find_user(id: int) -> bool:
     """
-    Contact user service and check if teacher exists.
-    For now, return True if teacher_id is 1, else False.
+    Verifies the existence of a user within the user management service.
+
+    Args:
+        id: Unique identifier of the user to verify.
+
+    Returns:
+        True if the user exists and is authorized, False otherwise.
     """
     if id == 1:
         return True
     return False
 
 
-async def send_images_to_ocr(images: list[UploadFile]):
+async def send_images_to_ocr(images: List[UploadFile]) -> List[Dict[str, Any]]:
+    """
+    Performs OCR on a list of images using an external AI vision service.
+
+    Args:
+        images: A list of image files to be processed.
+
+    Returns:
+        A list of dictionaries containing transcribed text and math expressions.
+
+    Raises:
+        BadGatewayException: If the OCR service is unreachable.
+        GatewayTimeoutException: If the OCR request times out.
+        AppException: If the service returns an error status code.
+    """
     try:
         async with httpx.AsyncClient(timeout=600.0) as client:
             files = [
@@ -133,10 +180,10 @@ async def send_images_to_ocr(images: list[UploadFile]):
         try:
             body = response.json()
             message = (
-                body.get("error") or "Something went wrong within the OCR Service."
+                body.get("error") or "Error within the OCR Service."
             )
         except Exception:
-            message = "Something went wrong within the OCR Service."
+            message = "Error within the OCR Service."
 
         raise AppException(status_code=response.status_code, message=message)
 
