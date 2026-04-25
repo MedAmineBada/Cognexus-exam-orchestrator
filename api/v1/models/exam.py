@@ -5,8 +5,7 @@ from pydantic import BaseModel, JsonValue, AnyHttpUrl
 
 
 class ExamCreate(BaseModel):
-    """
-    Schema for creating a new exam record.
+    """Schema for creating a new exam record.
 
     Attributes:
         id: Unique identifier for the exam creation request.
@@ -21,8 +20,7 @@ class ExamCreate(BaseModel):
 
 
 class ExamSave(BaseModel):
-    """
-    Schema for persisting exam data with an associated correction.
+    """Schema for persisting exam data with an associated correction.
 
     Attributes:
         id: Unique identifier for the exam.
@@ -39,8 +37,7 @@ class ExamSave(BaseModel):
 
 
 class ExamGet(BaseModel):
-    """
-    Schema for retrieving exam details for end-user display.
+    """Schema for retrieving exam details for end-user display.
 
     Attributes:
         uuid: Unique database identifier for the exam.
@@ -59,8 +56,7 @@ class ExamGet(BaseModel):
 
 
 class Exam(BaseModel):
-    """
-    Internal domain model representing a complete exam entity.
+    """Internal domain model representing a complete exam entity.
 
     Attributes:
         uuid: Unique database identifier.
