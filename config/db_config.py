@@ -10,7 +10,7 @@ from typing import Dict, Optional
 import uvicorn
 from pydantic.v1 import BaseSettings
 
-from config import env
+from .env_config import env
 
 
 class MongoDBConfig(BaseSettings):
