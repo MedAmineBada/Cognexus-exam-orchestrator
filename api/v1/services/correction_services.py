@@ -19,7 +19,6 @@ from api.v1.utils import (
     extract,
     sanitize_filename,
     upload_files,
-    find_user,
     NotFoundException,
     get_mongodb,
     ConflictException,
@@ -32,7 +31,6 @@ async def create_correction(
         Optional[Dict[str, Any]], Depends(parse_exam_content)
     ] = None,
     exam_id: str = Form(...),
-    user_id: int = Header(...),
     user_role: UserRole = Header(...),
 ) -> CorrectionSave:
     """Creates a new correction draft from an uploaded file.
@@ -55,9 +53,6 @@ async def create_correction(
     """
     if user_role != UserRole.TEACHER:
         raise NotFoundException(message="Only teachers can create corrections")
-
-    if not await find_user(user_id):
-        raise NotFoundException(message="Teacher doesn't exist.")
 
     file_content: Any = await extract(file)
     clean_text: Any = await organize_correction_text(exam_content, str(file_content))
@@ -103,9 +98,6 @@ async def save_correction(
     if user_role != UserRole.TEACHER:
         raise NotFoundException(message="Only teachers can save corrections")
 
-    if not await find_user(user_id):
-        raise NotFoundException(message="Teacher doesn't exist.")
-
     db = get_mongodb()
 
     if not await db.exam.find_one({"uuid": corr.exam_id}):
@@ -129,7 +121,7 @@ async def save_correction(
 
 
 async def get_correction(
-    exam_id: Optional[str], user_id: int, user_role: UserRole
+    exam_id: Optional[str], user_role: UserRole
 ) -> List[Dict[str, Any]]:
     """Retrieves one or all corrections from the database.
 
@@ -149,9 +141,6 @@ async def get_correction(
         raise NotFoundException(message="Only teachers can get corrections")
 
     db = get_mongodb()
-
-    if not await find_user(user_id):
-        raise NotFoundException(message="Teacher doesn't exist.")
 
     if exam_id:
         exam = await db.exam.find_one({"uuid": exam_id})

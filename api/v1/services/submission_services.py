@@ -14,7 +14,6 @@ from api.v1.models.enums import UserRole
 from api.v1.models.submission import AnswerSheet, Grading
 from api.v1.utils import (
     ForbiddenException,
-    find_user,
     NotFoundException,
     get_mongodb,
     send_images_to_ocr,
@@ -60,8 +59,6 @@ async def submit_exam(
     db = get_mongodb()
     if user_role != UserRole.STUDENT:
         raise ForbiddenException(message="Only students can submit exams.")
-    if not await find_user(user_id):
-        raise NotFoundException(message="Student doesn't exist.")
 
     exam: Optional[Dict[str, Any]] = await db.exam.find_one(
         {"uuid": exam_id}, {"_id": 0, "uuid": 1, "correction_id": 1, "content": 1}

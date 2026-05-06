@@ -19,7 +19,6 @@ from api.v1.utils import (
     organize_exam_text,
     upload_files,
     sanitize_filename,
-    find_user,
     NotFoundException,
     ForbiddenException,
 )
@@ -51,9 +50,6 @@ async def create_exam(
     """
     if user_role != UserRole.TEACHER:
         raise ForbiddenException(message="Only teachers can create exams")
-
-    if not await find_user(user_id):
-        raise NotFoundException(message="Teacher not found")
 
     exam_uuid: str = str(uuid.uuid4())
 
@@ -104,9 +100,6 @@ async def save_exam(
     """
     if user_role != UserRole.TEACHER:
         raise ForbiddenException(message="Only teachers can save exams")
-
-    if not await find_user(user_id):
-        raise NotFoundException(message="Teacher not found")
 
     db = get_mongodb()
 
