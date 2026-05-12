@@ -21,7 +21,7 @@ from api.v1.utils import (
     upload_files,
     NotFoundException,
     get_mongodb,
-    ConflictException,
+    ConflictException, move_file,
 )
 
 
@@ -68,12 +68,12 @@ async def create_correction(
     upload: Dict[str, Any] = await upload_files(
         [base64_encoded], [public_id], "corrections_draft"
     )
-    upload_url: str = upload["results"][0]["url"]
+    public_id: str = upload["results"][0]["public_id"]
 
     corr_uuid: str = str(uuid.uuid4())
 
     return CorrectionSave(
-        uuid=corr_uuid, exam_id=exam_id, content=clean_text, file_url=upload_url
+        uuid=corr_uuid, exam_id=exam_id, content=clean_text, file_public_id=public_id
     )
 
 
@@ -108,10 +108,12 @@ async def save_correction(
     ) or await db.correction.find_one({"exam_id": corr.exam_id}):
         raise ConflictException("Correction already exists.")
 
+    move_res = await move_file(corr.file_public_id, "corrections")
+
     new_correction = Correction(
         uuid=corr.uuid,
         exam_id=corr.exam_id,
-        file_url=str(corr.file_url),
+        file_url=move_res["url"],
         content=corr.content,
         teacher_id=user_id,
     )

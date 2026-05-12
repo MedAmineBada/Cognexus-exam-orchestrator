@@ -29,6 +29,8 @@ class EnvFile(BaseSettings):
     MONGO_DB_NAME: str
     DOC_PARSER_URL: str
     EXGATE_UPLOAD_URL: str
+    EXGATE_MOVE_URL: str
+    EXGATE_PURGE_URL: str
     EXGATE_LLM_URL: str
     OCR_URL: str
     ANTICHEAT_URL: str

@@ -19,6 +19,7 @@ from api.v1.utils import (
     connect_and_init_mongo_db,
     close_monbgodb_connection,
 )
+from api.v1.utils.scheduler import start_scheduler, scheduler
 
 
 @asynccontextmanager
@@ -36,11 +37,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         None: Control back to the FastAPI framework.
     """
     await connect_and_init_mongo_db()
+    start_scheduler()
     yield
     await close_monbgodb_connection()
+    scheduler.shutdown()
 
 
-app: FastAPI = FastAPI(debug=False, lifespan=lifespan)
+
+app: FastAPI = FastAPI(lifespan=lifespan)
 
 app.add_exception_handler(AppException, app_exception_manager)
 app.add_exception_handler(Exception, default_exception_manager)

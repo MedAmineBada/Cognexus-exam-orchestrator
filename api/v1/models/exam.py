@@ -17,7 +17,7 @@ class ExamCreate(BaseModel):
     title: str
     content: Dict[str, JsonValue]
     file_url: AnyHttpUrl
-
+    file_public_id: str
 
 class ExamSave(BaseModel):
     """Schema for persisting exam data with an associated correction.
@@ -32,9 +32,8 @@ class ExamSave(BaseModel):
     id: str
     title: str
     content: Dict[str, JsonValue]
-    file_url: AnyHttpUrl
+    file_public_id: str
     correction_id: str
-
 
 class ExamGet(BaseModel):
     """Schema for retrieving exam details for end-user display.

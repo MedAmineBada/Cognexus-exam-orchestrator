@@ -20,7 +20,7 @@ from api.v1.utils import (
     upload_files,
     sanitize_filename,
     NotFoundException,
-    ForbiddenException,
+    ForbiddenException, move_file,
 )
 
 
@@ -68,13 +68,14 @@ async def create_exam(
     upload: Dict[str, Any] = await upload_files(
         [base64_encoded], [public_id], "exams_draft"
     )
-    upload_url: str = upload["results"][0]["url"]
+    upload_result: str = upload["results"][0]
 
     return ExamCreate(
         id=exam_uuid,
         title=exam_name,
         content=clean_text,
-        file_url=upload_url,
+        file_url=upload_result["url"],
+        file_public_id=upload_result["public_id"],
         teacher_id=user_id,
     )
 
@@ -103,12 +104,14 @@ async def save_exam(
 
     db = get_mongodb()
 
+    move_result = await move_file(exam.file_public_id, "exams")
+
     new_exam = Exam(
         uuid=exam.id,
         title=exam.title,
         publish_datetime=datetime.now().replace(second=0, microsecond=0),
         content=exam.content,
-        file_url=str(exam.file_url),
+        file_url=move_result["url"],
         teacher_id=user_id,
         correction_id=exam.correction_id,
     )
@@ -117,11 +120,11 @@ async def save_exam(
     return {"uuid": new_exam.uuid}
 
 
-async def get_exam(id: Optional[str]) -> List[Dict[str, Any]]:
+async def get_exam(exam_id: Optional[str]) -> List[Dict[str, Any]]:
     """Retrieves one or all exams from the database.
 
     Args:
-        id: Optional UUID of a specific exam to retrieve.
+        exam_id: Optional UUID of a specific exam to retrieve.
 
     Returns:
         A list of exam documents. Returns all exams if id is None.
@@ -130,8 +133,8 @@ async def get_exam(id: Optional[str]) -> List[Dict[str, Any]]:
         NotFoundException: If a specific exam ID is provided but not found.
     """
     db = get_mongodb()
-    if id:
-        exam = await db.exam.find_one({"uuid": id})
+    if exam_id:
+        exam = await db.exam.find_one({"uuid": exam_id})
         if not exam:
             raise NotFoundException(message="Exam doesn't exist.")
         return [exam]

@@ -64,6 +64,69 @@ async def upload_files(
     return response.json()
 
 
+async def move_file(file_public_id: str, dest_folder: str) -> Dict[str, Any]:
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                env.EXGATE_MOVE_URL,
+                json={"public_id": file_public_id, "dest_folder": dest_folder},
+            )
+
+    except ConnectError:
+        raise BadGatewayException(
+            message="Failed to connect to external gate service on file move."
+        )
+    except TimeoutException:
+        raise GatewayTimeoutException(
+            message="External gate service timed out on file move."
+        )
+
+    if response.status_code != 200:
+        try:
+            body = response.json()
+            message = (
+                body.get("error")
+                or "Error within the external gate Service on file move."
+            )
+        except Exception:
+            message = "Error within the external gate Service on file move."
+
+        raise AppException(status_code=response.status_code, message=message)
+
+    return response.json()
+
+
+async def purge_files(folder: str) -> Dict[str, Any]:
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                f"{env.EXGATE_PURGE_URL}/{folder}", params={"days": 3}
+            )
+
+    except ConnectError:
+        raise BadGatewayException(
+            message="Failed to connect to external gate service on file purge."
+        )
+    except TimeoutException:
+        raise GatewayTimeoutException(
+            message="External gate service timed out on file purge."
+        )
+
+    if response.status_code != 200:
+        try:
+            body = response.json()
+            message = (
+                body.get("error")
+                or "Error within the external gate Service on file purge."
+            )
+        except Exception:
+            message = "Error within the external gate Service on file purge."
+
+        raise AppException(status_code=response.status_code, message=message)
+
+    return response.json()
+
+
 async def extract(file: UploadFile) -> str:
     """
     Extracts text content from a PDF file using an external parsing service.
@@ -98,10 +161,7 @@ async def extract(file: UploadFile) -> str:
     if response.status_code != 200:
         try:
             body = response.json()
-            message = (
-                body.get("error")
-                or "Error within the document parsing Service."
-            )
+            message = body.get("error") or "Error within the document parsing Service."
         except Exception:
             message = "Error within the document parsing Service."
 
@@ -179,9 +239,7 @@ async def send_images_to_ocr(images: List[UploadFile]) -> List[Dict[str, Any]]:
     if response.status_code != 200:
         try:
             body = response.json()
-            message = (
-                body.get("error") or "Error within the OCR Service."
-            )
+            message = body.get("error") or "Error within the OCR Service."
         except Exception:
             message = "Error within the OCR Service."
 

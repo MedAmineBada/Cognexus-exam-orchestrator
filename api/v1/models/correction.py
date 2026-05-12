@@ -33,5 +33,5 @@ class CorrectionSave(BaseModel):
     """
     uuid: str
     exam_id: str
-    file_url: AnyHttpUrl
+    file_public_id: str
     content: Dict[str, JsonValue]
