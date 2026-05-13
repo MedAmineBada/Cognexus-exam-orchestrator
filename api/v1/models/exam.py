@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict
+from typing import Dict, Optional
 
 from pydantic import BaseModel, JsonValue, AnyHttpUrl
 
@@ -87,3 +87,9 @@ class Exam(BaseModel):
     file_url: str
     teacher_id: str
     correction_id: str
+
+
+class ExamModifyModel(BaseModel):
+    title: Optional[str] = None
+    content: Optional[Dict[str, JsonValue]] = None
+    correction_id: Optional[str] = None

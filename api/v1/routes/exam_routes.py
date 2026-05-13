@@ -2,13 +2,15 @@ from typing import Any, Optional, List, Union
 
 from fastapi import APIRouter, UploadFile, Form, Header
 
-from api.v1.models.exam import ExamSave, ExamGet, ExamView
+from api.v1.models.exam import ExamSave, ExamGet, ExamView, ExamModifyModel
 from api.v1.services.exam_services import (
     create_exam,
     save_exam,
     get_exam,
     get_cheat_report,
     view_exam,
+    delete_exam,
+    modify_exam,
 )
 
 router: APIRouter = APIRouter()
@@ -37,7 +39,7 @@ async def create(
 
 
 @router.post("/save")
-async def save(exam: ExamSave, x_user_id: int = Header(...)) -> Any:
+async def save(exam: ExamSave, x_user_id: str = Header(...)) -> Any:
     """Saves or updates exam configuration and content.
 
     Persists the provided exam data to the database, ensuring all updates
@@ -88,3 +90,13 @@ async def get_report(exam_id: str) -> Any:
         A data structure containing the cheat report details.
     """
     return await get_cheat_report(exam_id)
+
+
+@router.delete("/{exam_id}/delete")
+async def delete(exam_id: str) -> Any:
+    return await delete_exam(exam_id)
+
+
+@router.patch("/{exam_id}/modify")
+async def modify(exam_id: str, changes: ExamModifyModel):
+    return await modify_exam(exam_id, changes)

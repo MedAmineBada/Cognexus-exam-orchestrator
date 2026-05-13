@@ -11,7 +11,7 @@ from typing import Any, Optional, Dict, List
 
 from starlette.datastructures import UploadFile
 
-from api.v1.models.exam import ExamCreate, ExamSave, Exam
+from api.v1.models.exam import ExamCreate, ExamSave, Exam, ExamModifyModel
 from api.v1.utils import (
     get_mongodb,
     extract,
@@ -20,6 +20,8 @@ from api.v1.utils import (
     sanitize_filename,
     NotFoundException,
     move_file,
+    AppException,
+    delete_cloud_files,
 )
 from api.v1.utils.anticheat_helpers import fetch_exam_cheat_report
 
@@ -153,3 +155,72 @@ async def get_cheat_report(exam_id: str) -> Any:
         The cheat report data from the anti-cheat service.
     """
     return await fetch_exam_cheat_report(exam_id)
+
+
+async def delete_exam(exam_id: str) -> Any:
+    db = get_mongodb()
+
+    exam = await db.exam.find_one({"uuid": exam_id})
+    correction = await db.correction.find_one({"uuid": exam["correction_id"]})
+
+    exam_file = exam.file_public_id
+    correction_file = correction.file_public_id
+
+    if not exam:
+        raise NotFoundException(message="Exam doesn't exist.")
+
+    try:
+        await db.exam.delete_one({"uuid": exam_id})
+    except:
+        raise AppException(message="Failed to delete the exam.")
+
+    try:
+        await db.correction.delete_one({"uuid": correction.uuid})
+    except:
+        raise AppException(message="Failed to delete the correction.")
+
+    await delete_cloud_files([exam_file, correction_file])
+
+    return {"success": "the exam and its correction and their files have been deleted."}
+
+
+async def modify_exam(exam_id: str, changes: ExamModifyModel):
+    db = get_mongodb()
+
+    exam = await db.exam.find_one({"uuid": exam_id}, {"_id": 0})
+    if not exam:
+        raise NotFoundException(message="Exam doesn't exist")
+
+    update_data = {}
+
+    if changes.title is not None and changes.title != exam.get("title"):
+        update_data["title"] = changes.title
+
+    if changes.content is not None and changes.content != exam.get("content"):
+        update_data["content"] = changes.content
+
+    if changes.correction_id is not None and changes.correction_id != exam.get(
+        "correction_id"
+    ):
+        update_data["correction_id"] = changes.correction_id
+
+    # Nothing changed
+    if not update_data:
+        return {
+            "message": "No changes detected",
+            "modified": False,
+            "exam": exam,
+        }
+
+    await db.exam.update_one(
+        {"uuid": exam_id},
+        {"$set": update_data},
+    )
+
+    updated_exam = await db.exam.find_one({"uuid": exam_id}, {"_id": 0})
+
+    return {
+        "message": "Exam updated successfully",
+        "modified": True,
+        "exam": updated_exam,
+    }

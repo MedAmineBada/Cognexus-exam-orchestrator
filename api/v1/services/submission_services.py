@@ -116,3 +116,94 @@ async def submit_exam(
         raise AppException("Could not save the grades to db.")
 
     return graded
+
+
+async def get_grading(exam_id: str, student_id: str):
+    db = get_mongodb()
+
+    pipeline = [
+        {
+            "$match": {
+                "exam": exam_id,
+                "student": student_id,
+            }
+        },
+        # exam
+        {
+            "$lookup": {
+                "from": "exam",
+                "localField": "exam",
+                "foreignField": "uuid",
+                "as": "exam_data",
+            }
+        },
+        # correction
+        {
+            "$lookup": {
+                "from": "correction",
+                "localField": "correction",
+                "foreignField": "uuid",
+                "as": "correction_data",
+            }
+        },
+        # answer sheet
+        {
+            "$lookup": {
+                "from": "answer_sheet",
+                "localField": "answer_sheet",
+                "foreignField": "uuid",
+                "as": "answer_sheet_data",
+            }
+        },
+        {
+            "$project": {
+                "_id": 0,
+                "uuid": 1,
+                "student": 1,
+                "exam": 1,
+                # grading content
+                "content": 1,
+                "awarded_grade": 1,
+                "max_grade": 1,
+                # exam fields
+                "exam_data": {
+                    "$let": {
+                        "vars": {"e": {"$arrayElemAt": ["$exam_data", 0]}},
+                        "in": {
+                            "content": "$$e.content",
+                            "file_url": "$$e.file_url",
+                            "teacher_id": "$$e.teacher_id",
+                            "title": "$$e.title",
+                        },
+                    }
+                },
+                # correction fields
+                "correction_data": {
+                    "$let": {
+                        "vars": {"c": {"$arrayElemAt": ["$correction_data", 0]}},
+                        "in": {
+                            "content": "$$c.content",
+                            "file_url": "$$c.file_url",
+                        },
+                    }
+                },
+                # answer sheet fields
+                "answer_sheet_data": {
+                    "$let": {
+                        "vars": {"a": {"$arrayElemAt": ["$answer_sheet_data", 0]}},
+                        "in": {
+                            "content": "$$a.content",
+                            "images": "$$a.images",
+                        },
+                    }
+                },
+            }
+        },
+    ]
+
+    result = await db.grade.aggregate(pipeline).to_list(length=1)
+
+    if not result:
+        raise NotFoundException(message="Grading doesn't exist.")
+
+    return result[0]

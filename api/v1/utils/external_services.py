@@ -67,7 +67,7 @@ async def upload_files(
 async def move_file(file_public_id: str, dest_folder: str) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
+            response = await client.patch(
                 env.EXGATE_URL + "/move",
                 json={"public_id": file_public_id, "dest_folder": dest_folder},
             )
@@ -99,7 +99,7 @@ async def move_file(file_public_id: str, dest_folder: str) -> Dict[str, Any]:
 async def purge_files(folder: str) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
+            response = await client.delete(
                 f"{env.EXGATE_URL}/purge/{folder}", params={"days": 3}
             )
 
@@ -121,6 +121,36 @@ async def purge_files(folder: str) -> Dict[str, Any]:
             )
         except Exception:
             message = "Error within the external gate Service on file purge."
+
+        raise AppException(status_code=response.status_code, message=message)
+
+    return response.json()
+
+
+async def delete_cloud_files(files: List[str]) -> Dict[str, Any]:
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                f"{env.EXGATE_URL}/delete", json={"public_ids": files}
+            )
+    except ConnectError:
+        raise BadGatewayException(
+            message="Failed to connect to external gate service on file deletion."
+        )
+    except TimeoutException:
+        raise GatewayTimeoutException(
+            message="External gate service timed out on file deletion."
+        )
+
+    if response.status_code != 200:
+        try:
+            body = response.json()
+            message = (
+                body.get("error")
+                or "Error within the external gate Service on file deletion."
+            )
+        except Exception:
+            message = "Error within the external gate Service on file deletion."
 
         raise AppException(status_code=response.status_code, message=message)
 

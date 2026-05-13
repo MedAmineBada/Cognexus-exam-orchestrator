@@ -23,25 +23,20 @@ class AnswerSheet(BaseModel):
 
 
 class Grading(BaseModel):
-    """
-    Represents the result of evaluating a student's submission.
-
-    Attributes:
-        uuid: Unique identifier for the grading record.
-        student: Identifier of the student being graded.
-        exam: Reference to the exam associated with this grade.
-        correction: Reference to the correction criteria used.
-        answer_sheet: Reference to the source answer sheet.
-        content: Detailed feedback and breakdown of the grading process.
-        awarded_grade: The score achieved by the student.
-        max_grade: The maximum possible score for the exam.
-    """
-
     uuid: str
     student: str
     exam: str
     correction: str
     answer_sheet: str
     content: Dict[str, JsonValue]
+    awarded_grade: float
+    max_grade: float
+
+
+class GradingView(BaseModel):
+    exam_title: str
+    content: Dict[str, JsonValue]
+    exam_content: Dict[str, JsonValue]
+    correction_content: Dict[str, JsonValue]
     awarded_grade: float
     max_grade: float
