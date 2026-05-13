@@ -10,10 +10,8 @@ from typing import List, Any, Dict, Optional
 
 from fastapi import UploadFile
 
-from api.v1.models.enums import UserRole
 from api.v1.models.submission import AnswerSheet, Grading
 from api.v1.utils import (
-    ForbiddenException,
     NotFoundException,
     get_mongodb,
     send_images_to_ocr,
@@ -23,7 +21,6 @@ from api.v1.utils import (
 from api.v1.utils.anticheat_helpers import (
     assemble_anti_cheat_request,
     submit_answers_to_anticheat,
-    fetch_exam_cheat_report,
 )
 from api.v1.utils.submission_helpers import (
     organize_submission,
@@ -34,31 +31,12 @@ from api.v1.utils.submission_helpers import (
 
 
 async def submit_exam(
-    exam_id: str, images: List[UploadFile], user_id: int, user_role: UserRole
+    exam_id: str,
+    images: List[UploadFile],
+    user_id: str,
 ) -> List[Dict[str, Any]]:
-    """Processes an exam submission from a student.
 
-    Performs OCR on submitted images, saves the answer sheet, triggers
-    automated grading against the correction, and submits data for
-    anti-cheat analysis.
-
-    Args:
-        exam_id: UUID of the exam being submitted.
-        images: List of uploaded images representing the student's answers.
-        user_id: ID of the student submitting the exam.
-        user_role: Role of the user making the request.
-
-    Returns:
-        A list of graded items with feedback and scores.
-
-    Raises:
-        ForbiddenException: If the user is not a student.
-        NotFoundException: If student, exam, or correction is not found.
-        AppException: If database insertion fails.
-    """
     db = get_mongodb()
-    if user_role != UserRole.STUDENT:
-        raise ForbiddenException(message="Only students can submit exams.")
 
     exam: Optional[Dict[str, Any]] = await db.exam.find_one(
         {"uuid": exam_id}, {"_id": 0, "uuid": 1, "correction_id": 1, "content": 1}
@@ -74,9 +52,7 @@ async def submit_exam(
 
     ocr_result: Any = await send_images_to_ocr(images)
 
-    organized_submission: Any = await organize_submission(
-        exam["content"], ocr_result
-    )
+    organized_submission: Any = await organize_submission(exam["content"], ocr_result)
 
     answer_sheet_uuid: str = str(uuid.uuid4())
 
@@ -140,15 +116,3 @@ async def submit_exam(
         raise AppException("Could not save the grades to db.")
 
     return graded
-
-
-async def get_cheat_report(exam_id: str) -> Any:
-    """Retrieves the anti-cheat report for a specific exam.
-
-    Args:
-        exam_id: UUID of the exam to fetch the report for.
-
-    Returns:
-        The cheat report data from the anti-cheat service.
-    """
-    return await fetch_exam_cheat_report(exam_id)

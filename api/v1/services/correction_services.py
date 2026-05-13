@@ -9,10 +9,9 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Any, Optional, Dict, List
 
-from fastapi import UploadFile, Form, Depends, Header
+from fastapi import UploadFile, Form, Depends
 
 from api.v1.models.correction import Correction, CorrectionSave
-from api.v1.models.enums import UserRole
 from api.v1.utils import (
     parse_exam_content,
     organize_correction_text,
@@ -21,7 +20,8 @@ from api.v1.utils import (
     upload_files,
     NotFoundException,
     get_mongodb,
-    ConflictException, move_file,
+    ConflictException,
+    move_file,
 )
 
 
@@ -31,28 +31,7 @@ async def create_correction(
         Optional[Dict[str, Any]], Depends(parse_exam_content)
     ] = None,
     exam_id: str = Form(...),
-    user_role: UserRole = Header(...),
 ) -> CorrectionSave:
-    """Creates a new correction draft from an uploaded file.
-
-    Extracts text from the provided file and organizes it relative to the
-    target exam's content.
-
-    Args:
-        file: The uploaded correction document.
-        exam_content: Structured content of the associated exam.
-        exam_id: UUID of the exam this correction belongs to.
-        user_id: ID of the teacher creating the correction.
-        user_role: Role of the user making the request.
-
-    Returns:
-        A CorrectionSave object containing the processed correction details.
-
-    Raises:
-        NotFoundException: If the user is not a teacher or teacher ID not found.
-    """
-    if user_role != UserRole.TEACHER:
-        raise NotFoundException(message="Only teachers can create corrections")
 
     file_content: Any = await extract(file)
     clean_text: Any = await organize_correction_text(exam_content, str(file_content))
@@ -78,25 +57,9 @@ async def create_correction(
 
 
 async def save_correction(
-    corr: CorrectionSave, user_id: int, user_role: UserRole
+    corr: CorrectionSave,
+    user_id: str,
 ) -> Dict[str, str]:
-    """Persists a correction to the database and links it to an exam.
-
-    Args:
-        corr: The correction data to be saved.
-        user_id: ID of the teacher saving the correction.
-        user_role: Role of the user making the request.
-
-    Returns:
-        A dictionary containing the UUID of the saved correction.
-
-    Raises:
-        NotFoundException: If user is not teacher, teacher not found, or
-            exam not found.
-        ConflictException: If a correction for this exam already exists.
-    """
-    if user_role != UserRole.TEACHER:
-        raise NotFoundException(message="Only teachers can save corrections")
 
     db = get_mongodb()
 
@@ -122,26 +85,7 @@ async def save_correction(
     return {"uuid": new_correction.uuid}
 
 
-async def get_correction(
-    exam_id: Optional[str], user_role: UserRole
-) -> List[Dict[str, Any]]:
-    """Retrieves one or all corrections from the database.
-
-    Args:
-        exam_id: Optional UUID of the exam to get the correction for.
-        user_id: ID of the teacher requesting corrections.
-        user_role: Role of the user making the request.
-
-    Returns:
-        A list of correction documents.
-
-    Raises:
-        NotFoundException: If user is not teacher, teacher not found, or
-            requested correction/exam doesn't exist.
-    """
-    if user_role != UserRole.TEACHER:
-        raise NotFoundException(message="Only teachers can get corrections")
-
+async def get_correction(exam_id: Optional[str]) -> List[Dict[str, Any]]:
     db = get_mongodb()
 
     if exam_id:

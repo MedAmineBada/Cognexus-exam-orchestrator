@@ -35,24 +35,18 @@ async def organize_submission(
         async with httpx.AsyncClient(timeout=60.0) as client:
             prompt = generate_organize_submission_prompt(exam_json, ocr_result)
             response = await client.post(
-                env.EXGATE_LLM_URL,
+                env.EXGATE_URL + "/prompt",
                 json={"prompt": prompt},
             )
     except ConnectError:
-        raise BadGatewayException(
-            message="Failed to connect to external gate service."
-        )
+        raise BadGatewayException(message="Failed to connect to external gate service.")
     except TimeoutException:
-        raise GatewayTimeoutException(
-            message="External gate service timed out."
-        )
+        raise GatewayTimeoutException(message="External gate service timed out.")
 
     if response.status_code != 200:
         try:
             body = response.json()
-            message = (
-                body.get("error") or "Error within the external gate service."
-            )
+            message = body.get("error") or "Error within the external gate service."
         except Exception:
             message = "Error within the external gate service."
 
@@ -74,7 +68,7 @@ async def organize_submission(
 def assemble_submission_request(
     exam_content: Dict[str, Any],
     correction_content: Dict[str, Any],
-    submission_content: Dict[str, Any]
+    submission_content: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
     Merges exam, correction, and submission data into a single grading model.
@@ -130,7 +124,7 @@ async def grade_submission(submission: Dict[str, Any]) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=260.0) as client:
             response = await client.post(
-                env.EXGATE_LLM_URL,
+                env.EXGATE_URL + "/prompt",
                 json={"prompt": prompt},
             )
     except ConnectError:
@@ -145,9 +139,7 @@ async def grade_submission(submission: Dict[str, Any]) -> Dict[str, Any]:
     if response.status_code != 200:
         try:
             body = response.json()
-            message = (
-                body.get("error") or "Error within the external gate service."
-            )
+            message = body.get("error") or "Error within the external gate service."
         except Exception:
             message = "Error within the external gate service."
 

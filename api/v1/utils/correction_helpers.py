@@ -36,7 +36,7 @@ async def organize_correction_text(
         async with httpx.AsyncClient(timeout=60.0) as client:
             prompt = generate_organize_correction_prompt(exam_json, correction_text)
             response = await client.post(
-                env.EXGATE_LLM_URL,
+                env.EXGATE_URL + "/prompt",
                 json={"prompt": prompt},
             )
     except ConnectError:
@@ -51,9 +51,7 @@ async def organize_correction_text(
     if response.status_code != 200:
         try:
             body = response.json()
-            message = (
-                body.get("error") or "Error within the external gate Service."
-            )
+            message = body.get("error") or "Error within the external gate Service."
         except Exception:
             message = "Error within the external gate Service."
 

@@ -2,10 +2,13 @@ from typing import Any, Optional, List, Union
 
 from fastapi import APIRouter, UploadFile, Form, Header
 
-from api.v1.models.enums import UserRole
 from api.v1.models.exam import ExamSave, ExamGet
-from api.v1.services.exam_services import create_exam, save_exam, get_exam
-from api.v1.services.submission_services import get_cheat_report
+from api.v1.services.exam_services import (
+    create_exam,
+    save_exam,
+    get_exam,
+    get_cheat_report,
+)
 
 router: APIRouter = APIRouter()
 
@@ -13,8 +16,7 @@ router: APIRouter = APIRouter()
 @router.post("/create")
 async def create(
     file: UploadFile,
-    x_user_id: int = Header(...),
-    x_user_role: UserRole = Header(...),
+    x_user_id: str = Header(...),
     exam_name: str = Form(...),
 ) -> Any:
     """Creates a new exam from an uploaded file.
@@ -25,19 +27,16 @@ async def create(
     Args:
         file: The uploaded document containing exam questions.
         x_user_id: Unique identifier of the user initiating the request.
-        x_user_role: The role of the user, used for authorization.
         exam_name: The display name for the exam.
 
     Returns:
         A dictionary or object representing the created exam.
     """
-    return await create_exam(file, x_user_id, x_user_role, exam_name)
+    return await create_exam(file, x_user_id, exam_name)
 
 
 @router.post("/save")
-async def save(
-    exam: ExamSave, x_user_id: int = Header(...), x_user_role: UserRole = Header(...)
-) -> Any:
+async def save(exam: ExamSave, x_user_id: int = Header(...)) -> Any:
     """Saves or updates exam configuration and content.
 
     Persists the provided exam data to the database, ensuring all updates
@@ -46,12 +45,11 @@ async def save(
     Args:
         exam: The validated exam data to be stored.
         x_user_id: Unique identifier of the user performing the save.
-        x_user_role: The role of the user for permission validation.
 
     Returns:
         The result of the save operation, typically the saved exam data.
     """
-    return await save_exam(exam, x_user_id, x_user_role)
+    return await save_exam(exam, x_user_id)
 
 
 @router.get("/get", response_model=List[ExamGet])

@@ -11,7 +11,6 @@ from typing import Any, Optional, Dict, List
 
 from starlette.datastructures import UploadFile
 
-from api.v1.models.enums import UserRole
 from api.v1.models.exam import ExamCreate, ExamSave, Exam
 from api.v1.utils import (
     get_mongodb,
@@ -20,14 +19,14 @@ from api.v1.utils import (
     upload_files,
     sanitize_filename,
     NotFoundException,
-    ForbiddenException, move_file,
+    move_file,
 )
+from api.v1.utils.anticheat_helpers import fetch_exam_cheat_report
 
 
 async def create_exam(
     file: UploadFile,
-    user_id: int,
-    user_role: UserRole,
+    user_id: str,
     exam_name: str,
 ) -> ExamCreate:
     """Creates a new exam draft from an uploaded file.
@@ -48,9 +47,6 @@ async def create_exam(
         ForbiddenException: If the user is not a teacher.
         NotFoundException: If the teacher ID is not found in the system.
     """
-    if user_role != UserRole.TEACHER:
-        raise ForbiddenException(message="Only teachers can create exams")
-
     exam_uuid: str = str(uuid.uuid4())
 
     exam_content: Any = await extract(file)
@@ -82,8 +78,7 @@ async def create_exam(
 
 async def save_exam(
     exam: ExamSave,
-    user_id: int,
-    user_role: UserRole,
+    user_id: str,
 ) -> Dict[str, str]:
     """Persists a processed exam to the database.
 
@@ -99,9 +94,6 @@ async def save_exam(
         ForbiddenException: If the user is not a teacher.
         NotFoundException: If the teacher ID is not found.
     """
-    if user_role != UserRole.TEACHER:
-        raise ForbiddenException(message="Only teachers can save exams")
-
     db = get_mongodb()
 
     move_result = await move_file(exam.file_public_id, "exams")
@@ -141,3 +133,15 @@ async def get_exam(exam_id: Optional[str]) -> List[Dict[str, Any]]:
     else:
         exams: List[Dict[str, Any]] = await db.exam.find().to_list(length=None)
         return exams
+
+
+async def get_cheat_report(exam_id: str) -> Any:
+    """Retrieves the anti-cheat report for a specific exam.
+
+    Args:
+        exam_id: UUID of the exam to fetch the report for.
+
+    Returns:
+        The cheat report data from the anti-cheat service.
+    """
+    return await fetch_exam_cheat_report(exam_id)

@@ -14,8 +14,9 @@ class AnswerSheet(BaseModel):
         content: Structured data containing the student's answers.
         images: List of URLs or identifiers for any uploaded image responses.
     """
+
     uuid: str
-    student_id: int
+    student_id: str
     exam_id: str
     content: Dict[str, JsonValue]
     images: List[str]
@@ -35,8 +36,9 @@ class Grading(BaseModel):
         awarded_grade: The score achieved by the student.
         max_grade: The maximum possible score for the exam.
     """
+
     uuid: str
-    student: int
+    student: str
     exam: str
     correction: str
     answer_sheet: str

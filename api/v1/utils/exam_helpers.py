@@ -60,7 +60,8 @@ async def organize_exam_text(text: str) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                env.EXGATE_LLM_URL, json={"prompt": organize_exam_text_prompt + text}
+                env.EXGATE_URL + "/prompt",
+                json={"prompt": organize_exam_text_prompt + text},
             )
     except ConnectError:
         raise BadGatewayException(

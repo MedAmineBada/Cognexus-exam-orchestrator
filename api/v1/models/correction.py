@@ -14,11 +14,12 @@ class Correction(BaseModel):
         content: Structured data containing the specific correction criteria.
         teacher_id: Identifier of the teacher who authored the correction.
     """
+
     uuid: str
     exam_id: str
     file_url: AnyHttpUrl
     content: Dict[str, JsonValue]
-    teacher_id: int
+    teacher_id: str
 
 
 class CorrectionSave(BaseModel):
@@ -31,6 +32,7 @@ class CorrectionSave(BaseModel):
         file_url: URL to the correction document.
         content: Structured correction rules and data.
     """
+
     uuid: str
     exam_id: str
     file_public_id: str

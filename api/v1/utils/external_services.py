@@ -36,7 +36,7 @@ async def upload_files(
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                env.EXGATE_UPLOAD_URL,
+                env.EXGATE_URL + "/upload",
                 json={"folder": folder, "files": files, "filenames": filenames},
             )
 
@@ -68,7 +68,7 @@ async def move_file(file_public_id: str, dest_folder: str) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                env.EXGATE_MOVE_URL,
+                env.EXGATE_URL + "/move",
                 json={"public_id": file_public_id, "dest_folder": dest_folder},
             )
 
@@ -100,7 +100,7 @@ async def purge_files(folder: str) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                f"{env.EXGATE_PURGE_URL}/{folder}", params={"days": 3}
+                f"{env.EXGATE_URL}/purge/{folder}", params={"days": 3}
             )
 
     except ConnectError:
@@ -186,21 +186,6 @@ def sanitize_filename(name: str) -> str:
     name = re.sub(r"[^a-zA-Z0-9_-]", "_", name)
     name = re.sub(r"_+", "_", name)
     return name.strip("_")
-
-
-async def find_user(id: int) -> bool:
-    """
-    Verifies the existence of a user within the user management service.
-
-    Args:
-        id: Unique identifier of the user to verify.
-
-    Returns:
-        True if the user exists and is authorized, False otherwise.
-    """
-    if id == 1:
-        return True
-    return False
 
 
 async def send_images_to_ocr(images: List[UploadFile]) -> List[Dict[str, Any]]:
