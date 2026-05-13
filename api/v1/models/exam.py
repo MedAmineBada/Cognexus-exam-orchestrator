@@ -37,6 +37,7 @@ class ExamSave(BaseModel):
     content: Dict[str, JsonValue]
     file_public_id: str
     correction_id: str
+    end_datetime: datetime
 
 
 class ExamGet(BaseModel):
@@ -57,6 +58,7 @@ class ExamGet(BaseModel):
     content: Dict[str, JsonValue]
     file_url: str
     correction_id: str
+    end_datetime: datetime
 
 
 class ExamView(BaseModel):
@@ -65,6 +67,7 @@ class ExamView(BaseModel):
     publish_datetime: datetime
     content: Dict[str, JsonValue]
     file_url: str
+    end_datetime: datetime
 
 
 class Exam(BaseModel):
@@ -82,14 +85,16 @@ class Exam(BaseModel):
 
     uuid: str
     title: str
-    publish_datetime: datetime
     content: Dict[str, JsonValue]
     file_url: str
     teacher_id: str
     correction_id: str
+    publish_datetime: datetime
+    end_datetime: datetime
 
 
 class ExamModifyModel(BaseModel):
     title: Optional[str] = None
     content: Optional[Dict[str, JsonValue]] = None
     correction_id: Optional[str] = None
+    end_datetime: Optional[datetime] = None

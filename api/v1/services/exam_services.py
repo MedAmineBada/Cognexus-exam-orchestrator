@@ -6,7 +6,7 @@ handling file processing, storage, and database interactions.
 
 import base64
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Optional, Dict, List
 
 from starlette.datastructures import UploadFile
@@ -22,6 +22,7 @@ from api.v1.utils import (
     move_file,
     AppException,
     delete_cloud_files,
+    UnprocessableEntityException,
 )
 from api.v1.utils.anticheat_helpers import fetch_exam_cheat_report
 
@@ -49,6 +50,7 @@ async def create_exam(
         ForbiddenException: If the user is not a teacher.
         NotFoundException: If the teacher ID is not found in the system.
     """
+
     exam_uuid: str = str(uuid.uuid4())
 
     exam_content: Any = await extract(file)
@@ -96,6 +98,14 @@ async def save_exam(
         ForbiddenException: If the user is not a teacher.
         NotFoundException: If the teacher ID is not found.
     """
+    now = datetime.now().replace(second=0, microsecond=0)
+    end_dt = exam.end_datetime.replace(second=0, microsecond=0)
+
+    if end_dt < now + timedelta(hours=1):
+        raise UnprocessableEntityException(
+            "Exam end datetime must be at least 1 hour from now."
+        )
+
     db = get_mongodb()
 
     move_result = await move_file(exam.file_public_id, "exams")
@@ -108,6 +118,7 @@ async def save_exam(
         file_url=move_result["url"],
         teacher_id=user_id,
         correction_id=exam.correction_id,
+        end_datetime=end_dt,
     )
 
     await db.exam.insert_one(new_exam.model_dump())
@@ -203,6 +214,11 @@ async def modify_exam(exam_id: str, changes: ExamModifyModel):
         "correction_id"
     ):
         update_data["correction_id"] = changes.correction_id
+
+    if changes.end_datetime is not None and changes.end_datetime != exam.get(
+        "end_datetime"
+    ):
+        update_data["end_datetime"] = changes.end_datetime
 
     # Nothing changed
     if not update_data:

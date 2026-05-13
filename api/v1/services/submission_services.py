@@ -6,6 +6,7 @@ cloud storage of answer sheets, automated grading, and anti-cheat reporting.
 
 import base64
 import uuid
+from datetime import datetime
 from typing import List, Any, Dict, Optional
 
 from fastapi import UploadFile
@@ -17,6 +18,7 @@ from api.v1.utils import (
     send_images_to_ocr,
     AppException,
     upload_files,
+    ForbiddenException,
 )
 from api.v1.utils.anticheat_helpers import (
     assemble_anti_cheat_request,
@@ -39,10 +41,16 @@ async def submit_exam(
     db = get_mongodb()
 
     exam: Optional[Dict[str, Any]] = await db.exam.find_one(
-        {"uuid": exam_id}, {"_id": 0, "uuid": 1, "correction_id": 1, "content": 1}
+        {"uuid": exam_id},
+        {"_id": 0, "uuid": 1, "correction_id": 1, "content": 1, "end_datetime": 1},
     )
+
     if not exam:
         raise NotFoundException(message="Exam doesn't exist.")
+
+    now = datetime.now().replace(second=0, microsecond=0)
+    if exam["end_datetime"] < now:
+        raise ForbiddenException("Exam submission window has closed.")
 
     correction: Optional[Dict[str, Any]] = await db.correction.find_one(
         {"uuid": exam["correction_id"]}, {"_id": 0, "content": 1}
