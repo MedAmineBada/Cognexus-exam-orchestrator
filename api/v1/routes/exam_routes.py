@@ -2,12 +2,13 @@ from typing import Any, Optional, List, Union
 
 from fastapi import APIRouter, UploadFile, Form, Header
 
-from api.v1.models.exam import ExamSave, ExamGet
+from api.v1.models.exam import ExamSave, ExamGet, ExamView
 from api.v1.services.exam_services import (
     create_exam,
     save_exam,
     get_exam,
     get_cheat_report,
+    view_exam,
 )
 
 router: APIRouter = APIRouter()
@@ -66,6 +67,11 @@ async def get(id: Optional[str] = None) -> Union[List[ExamGet], Any]:
         A list of exams or a single exam object if an ID was provided.
     """
     return await get_exam(id)
+
+
+@router.get("/{exam_id}", response_model=ExamView)
+async def view(exam_id: str) -> ExamView:
+    return await view_exam(exam_id)
 
 
 @router.get("/{exam_id}/cheat_report")

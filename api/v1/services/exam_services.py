@@ -135,6 +135,14 @@ async def get_exam(exam_id: Optional[str]) -> List[Dict[str, Any]]:
         return exams
 
 
+async def view_exam(exam_id: str):
+    db = get_mongodb()
+    exam = await db.exam.find_one({"uuid": exam_id})
+    if not exam:
+        raise NotFoundException(message="Exam doesn't exist.")
+    return exam
+
+
 async def get_cheat_report(exam_id: str) -> Any:
     """Retrieves the anti-cheat report for a specific exam.
 
